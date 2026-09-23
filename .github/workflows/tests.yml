@@ -2,7 +2,7 @@ name: tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, lexer]
   pull_request:
 
 jobs:
@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         # Add grammar versions you have implemented (e.g. [1, 2, 3, 4, 5])
-        grammar: [1]
+        grammar: [1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,14 +23,8 @@ jobs:
 
       - name: Build your compiler
         run: |
-          # TODO: Replace with your compiler's build command
-          # Examples:
-          #   cargo build                          # Rust
-          #   javac src/*.java -d build/            # Java
-          #   go build -o build/splc ./src           # Go
-          #   ghc -o build/splc src/Main.hs         # Haskell
-          echo "No compiler configured. Edit this step to build your compiler."
-          exit 1
+          cmake -S src/lexer -B build
+          cmake --build build
 
       - name: Run tests for grammar ${{ matrix.grammar }}
         run: python3 test/run_tests.py test --grammar ${{ matrix.grammar }} --no-build
