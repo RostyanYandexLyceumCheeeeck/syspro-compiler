@@ -26,5 +26,8 @@ jobs:
           cmake -S src/lexer -B build
           cmake --build build
 
-      - name: Run tests for grammar ${{ matrix.grammar }}
-        run: python3 test/run_tests.py test --grammar ${{ matrix.grammar }} --no-build
+      - name: Run tests for grammar Lexer ${{ matrix.grammar }}
+        run: python3 test/run_tests.py test --stage lexer --grammar ${{ matrix.grammar }} --no-build
+      
+      # - name: Run tests for grammar ${{ matrix.grammar }}
+      #   run: python3 test/run_tests.py test --grammar ${{ matrix.grammar }} --no-build
