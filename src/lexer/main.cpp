@@ -3,6 +3,8 @@
 
 #include "headers/Lexer.hpp"
 
+#define DEBUG 0
+
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -28,9 +30,12 @@ int main(int argc, char* argv[]) {
     
     for (const auto& tok : tokens) {
         auto tokType = tok.getType();
-        if (tokType == SPACE || tokType == SINGLE_COMM || tokType == MULTI_COMM) { continue; }
-        else if (tokType == ERROR) { codeReturn++; }
         
+        if (tokType == ERROR) { codeReturn = -1; }
+        #ifndef DEBUGE
+        else if (tokType == SPACE || tokType == SINGLE_COMM || tokType == MULTI_COMM) { continue; }
+        #endif
+
         j.push_back(tok.toJson());
     }
 

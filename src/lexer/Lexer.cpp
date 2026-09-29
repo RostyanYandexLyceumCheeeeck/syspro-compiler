@@ -27,9 +27,8 @@ void Lexer::initParsers() {
 
     // spaces, comments, errors(comments) and strings
     parsers_.push_back(std::make_unique<TokenParse<R"(\s+)",             "SPACE",       SPACE>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(//[^\n]*\n)",      "SINGLE_COMM", SINGLE_COMM>>());
+    parsers_.push_back(std::make_unique<TokenParse<R"(//[^\n]*)",        "SINGLE_COMM", SINGLE_COMM>>());
     parsers_.push_back(std::make_unique<TokenParse<R"(/\*.*?\*/)",       "MULTI_COMM",  MULTI_COMM>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(//.*?$)",          "ERROR",       ERROR, "Unterminated single-line comment">>());
     parsers_.push_back(std::make_unique<TokenParse<R"(/\*.*?$)",         "ERROR",       ERROR, "Unterminated multi-line comment">>());
     parsers_.push_back(std::make_unique<TokenParse<R"("([^"\\]|\\.)*")", "STR",         STR>>());
     parsers_.push_back(std::make_unique<TokenParse<R"('([^'\\]|\\.)*')", "STR",         STR>>());
