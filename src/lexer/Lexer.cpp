@@ -1,101 +1,162 @@
-#include "headers/Lexer.hpp"
+#include <headers/Lexer.hpp>
+
+#include <optional>
+#include <algorithm>
+#include <string_view>
+#include <unordered_map>
+
+#include <ctre.hpp>
 
 
-void Lexer::initParsers() {
+namespace {
 
-    // keywords
-    parsers_.push_back(std::make_unique<TokenParse<R"(return\b)",        "RETURN",      RETURN>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(val\b)",           "VAL",         VAL>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(var\b)",           "VAR",         VAR>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(if\b)",            "IF",          IF>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(else\b)",          "ELSE",        ELSE>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(while\b)",         "WHILE",       WHILE>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(break\b)",         "BREAK",       BREAK>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(continue\b)",      "CONTINUE",    CONTINUE>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(true\b)",          "TRUE",        TRUE>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(false\b)",         "FALSE",       FAlSE>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(def\b)",           "DEF",         DEF>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(extern\b)",        "EXTERN",      EXTERN>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(Int8\b)",          "INT8",        INT8>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(Int16\b)",         "INT16",       INT16>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(Int32\b)",         "INT32",       INT32>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(Int64\b)",         "INT64",       INT64>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(Bool\b)",          "BOOL",        BOOL>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(String\b)",        "STRING",      STRING>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(cast\b)",          "CAST",        CAST>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(struct\b)",        "STRUCT",      STRUCT>>());
+template <size_t N>
+struct FixedString {
+    char buf[N];
+    constexpr FixedString(const char (&s)[N]) { std::copy_n(s, N, buf); }
 
-    // spaces, comments, errors(comments) and strings
-    parsers_.push_back(std::make_unique<TokenParse<R"(\s+)",             "SPACE",       SPACE>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(//[^\n]*)",        "SINGLE_COMM", SINGLE_COMM>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(/\*.*?\*/)",       "MULTI_COMM",  MULTI_COMM>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(/\*.*?$)",         "ERROR",       ERROR, "Unterminated multi-line comment">>());
-    parsers_.push_back(std::make_unique<TokenParse<R"("([^"\\]|\\.)*")", "STR",         STR>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"('([^'\\]|\\.)*')", "STR",         STR>>());
+    constexpr explicit operator bool() const { return N > 1 && buf[0] != '\0'; }
+    constexpr operator std::string_view() const { return {buf, N > 0 ? N - 1 : 0}; }
+};
 
-    // number and ident
-    parsers_.push_back(std::make_unique<TokenParse<R"(\d+)",             "INT",         INT>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"([a-zA-Z_]\w*)",    "IDENT",       IDENT>>());
 
-    // brackets
-    parsers_.push_back(std::make_unique<TokenParse<R"(\()",              "LPAREN",      LPAREN>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(\))",              "RPAREN",      RPAREN>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(\{)",              "LBRACE",      LBRACE>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(\})",              "RBRACE",      RBRACE>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(\[)",              "LBRACKET",    LBRACKET>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(\])",              "RBRACKET",    RBRACKET>>());
+template <FixedString Pattern>
+std::optional<std::string_view> matchPattern(std::string_view s) {
+    auto match = ctre::starts_with<Pattern.buf>(s.begin(), s.end());
     
-    // operatitons
-    parsers_.push_back(std::make_unique<TokenParse<R"(&&)",              "AND",         AND>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(\|\|)",            "OR",          OR>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(<=)",              "LE",          LE>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(>=)",              "GE",          GE>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(!=)",              "NE",          NE>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(==)",              "EQ",          EQ>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(=)",               "ASSIGN",      ASSIGN>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(<)",               "LT",          LT>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(>)",               "GT",          GT>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(!)",               "NOT",         NOT>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(\+)",              "PLUS",        PLUS>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(-)",               "MINUS",       MINUS>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(\*)",              "MULT",        MULTI>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(/)",               "DIV",         DIVI>>());
-    
-    // dot, colon, comma and semicolon
-    parsers_.push_back(std::make_unique<TokenParse<R"(\.)",              "DOT",         DOT>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(:)",               "COLON",       COLON>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(,)",               "COMMA",       COMMA>>());
-    parsers_.push_back(std::make_unique<TokenParse<R"(;)",               "SEMI",        SEMI>>());
+    if (match) { return match.to_view(); }
+    return std::nullopt;
 }
 
 
-std::vector<Token> Lexer::parse(const std::string& src) const { 
+using PointerFunc = std::optional<std::string_view> (*)(std::string_view);
+
+struct LexerRule {
+    TokenType type;
+    PointerFunc matcher;
+    std::string_view errorValue = "";
+};
+
+
+const std::unordered_map<std::string_view, TokenType> KEYWORDS = {
+    {"return",   TokenType::RETURN},
+    {"val",      TokenType::VAL},
+    {"var",      TokenType::VAR},
+    {"if",       TokenType::IF},
+    {"else",     TokenType::ELSE},
+    {"while",    TokenType::WHILE},
+    {"break",    TokenType::BREAK},
+    {"continue", TokenType::CONTINUE},
+    {"true",     TokenType::TRUE},
+    {"false",    TokenType::FALSE},
+    {"def",      TokenType::DEF},
+    {"extern",   TokenType::EXTERN},
+    {"Int8",     TokenType::INT8},
+    {"Int16",    TokenType::INT16},
+    {"Int32",    TokenType::INT32},
+    {"Int64",    TokenType::INT64},
+    {"Bool",     TokenType::BOOL},
+    {"String",   TokenType::STRING},
+    {"cast",     TokenType::CAST},
+    {"struct",   TokenType::STRUCT},
+};
+
+constexpr LexerRule RULES[] = {
+    // spaces, comments, errors(comments) and strings
+    { TokenType::SPACE,       matchPattern<R"(\s+)">                                               },
+    { TokenType::SINGLE_COMM, matchPattern<R"(//[^\n]*)">                                          },
+    { TokenType::MULTI_COMM,  matchPattern<R"(/\*[\s\S]*?\*/)">                                    },
+    { TokenType::ERROR,       matchPattern<R"(/\*[\s\S]*)">,     "Unterminated multi-line comment" },
+    { TokenType::STR,         matchPattern<R"("([^"\\]|\\.)*")">                                   },
+    { TokenType::STR,         matchPattern<R"('([^'\\]|\\.)*')">                                   },
+
+    // number and ident
+    { TokenType::INT,         matchPattern<R"(0|[1-9]\d*)">   },
+    { TokenType::IDENT,       matchPattern<R"([a-zA-Z_]\w*)"> },
+
+    // brackets
+    { TokenType::LPAREN,      matchPattern<R"(\()"> },
+    { TokenType::RPAREN,      matchPattern<R"(\))"> },
+    { TokenType::LBRACE,      matchPattern<R"(\{)"> },
+    { TokenType::RBRACE,      matchPattern<R"(\})"> },
+    { TokenType::LBRACKET,    matchPattern<R"(\[)"> },
+    { TokenType::RBRACKET,    matchPattern<R"(\])"> },
+
+    // operatitons
+    { TokenType::AND,         matchPattern<R"(&&)">   },
+    { TokenType::OR,          matchPattern<R"(\|\|)"> },
+    { TokenType::LE,          matchPattern<R"(<=)">   },
+    { TokenType::GE,          matchPattern<R"(>=)">   },
+    { TokenType::NE,          matchPattern<R"(!=)">   },
+    { TokenType::EQ,          matchPattern<R"(==)">   },
+
+    // operatitons
+    { TokenType::ASSIGN,      matchPattern<R"(=)">   },
+    { TokenType::LT,          matchPattern<R"(<)">   },
+    { TokenType::GT,          matchPattern<R"(>)">   },
+    { TokenType::NOT,         matchPattern<R"(!)">   },
+    { TokenType::PLUS,        matchPattern<R"(\+)">  },
+    { TokenType::MINUS,       matchPattern<R"(-)">   },
+    { TokenType::MULT,        matchPattern<R"(\*)">  },
+    { TokenType::DIV,         matchPattern<R"(/)">   },
+
+    // dot, colon, comma and semicolon
+    { TokenType::DOT,         matchPattern<R"(\.)">  },
+    { TokenType::COLON,       matchPattern<R"(:)">   },
+    { TokenType::COMMA,       matchPattern<R"(,)">   },
+    { TokenType::SEMI,        matchPattern<R"(;)">   },
+};
+
+void updatePos(std::string_view sv, size_t& offset, size_t& line, size_t& column) {
+    offset += sv.length();
+    column += sv.length();
+
+    auto last_n = sv.rfind('\n');
+    if (last_n != std::string_view::npos) {
+        line += std::count(sv.begin(), sv.end(), '\n');
+        column = sv.length() - last_n;
+    }
+}
+
+} // namespace
+
+
+std::vector<Token> Lexer::parse(std::string_view src) const {
     std::vector<Token> tokens;
 
     size_t offset = 0, line = 1, column = 1;
-    while (offset != src.size()) {
+    while (offset < src.size()) {
+        std::string_view remaining = src.substr(offset);
 
-        Token res;
-        bool mathed = false;
-        for (const auto& parser : parsers_) {
-        
-            auto t = parser->getToken(src, offset, line, column);
-            if (t) {
-                res = t.value();
-                mathed = true;
+        bool matched = false;
+        for (const auto& rule : RULES) {
+            
+            auto obj = rule.matcher(remaining);
+            if (obj) {
+                std::string_view sv = obj.value();
+                TokenType actualType = rule.type;
+
+                if (actualType == TokenType::IDENT) {
+                    auto it = KEYWORDS.find(sv);
+                    if (it != KEYWORDS.end()) { actualType = it->second; }
+                }
+
+                std::string tokenValue = rule.errorValue.empty() ? std::string(sv) : std::string(rule.errorValue);
+
+                tokens.emplace_back(actualType, std::move(tokenValue), line, column);
+                updatePos(sv, offset, line, column);
+                matched = true;
                 break;
             }
         }
-        
-        if (!mathed) { 
-            res = Token(ERROR, src.substr(offset, 1), "ERROR", line, column);
-            offset++;
-            column++; 
-        }
-        tokens.push_back(res);
-    }
-    tokens.push_back(Token(END, "", "EOF", line, column));
 
+        if (!matched) {
+            tokens.emplace_back(TokenType::ERROR, std::string(remaining.substr(0, 1)), line, column);
+            offset++;
+            column++;
+        }
+    }
+
+    tokens.emplace_back(TokenType::END, "", line, column);
     return tokens;
 }
-

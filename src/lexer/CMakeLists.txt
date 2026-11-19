@@ -1,32 +1,38 @@
 cmake_minimum_required(VERSION 3.14)
-project(LexerProject CXX)
+project(Lexer CXX)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    set(CMAKE_CXX_STANDARD 20)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+endif()
 
 
 include(FetchContent)
 
-FetchContent_Declare(
-  ctre
-  GIT_REPOSITORY "https://github.com/hanickadot/compile-time-regular-expressions"
-  GIT_TAG        v3.11.0
-)
+if(NOT TARGET ctre::ctre)
+    FetchContent_Declare(
+    ctre
+    GIT_REPOSITORY "https://github.com/hanickadot/compile-time-regular-expressions"
+    GIT_TAG        v3.11.0
+    )
+    FetchContent_MakeAvailable(ctre)
+endif()
 
-FetchContent_Declare(
-    json
-    GIT_REPOSITORY "https://github.com/nlohmann/json"
-    GIT_TAG v3.11.3
-)
+if(NOT TARGET nlohmann_json::nlohmann_json)
+    FetchContent_Declare(
+        json
+        GIT_REPOSITORY "https://github.com/nlohmann/json"
+        GIT_TAG v3.11.3
+    )
+    FetchContent_MakeAvailable(ctre json)
+endif()
+
 
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 
-FetchContent_MakeAvailable(ctre json)
-
-
 add_executable(lexer
-    main.cpp
+    main_lexer.cpp
     Lexer.cpp
 )
 
