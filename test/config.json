@@ -1,19 +1,19 @@
 {
   "$schema": "schemas/config.schema.json",
-  "build": "cmake -S {root}/src/lexer -B {root}/build && cmake --build {root}/build",
+  "build": "cmake -S {root}/src -B {root}/build && cmake --build {root}/build",
   "default_grammar": "1",
   "versions": [1, 2, 3, 4, 5],
   "out_dir": "{root}/test/build",
   "stages": {
     "lexer": {
-      "cmd": ["{root}/build/lexer", "{input}"],
-      "out": "stdout",
+      "cmd": ["{root}/build/bin/lexer", "-g", "{grammar}", "-t", "{tokens_out}", "{input}"],
+      "out": "{tokens_out}",
       "preprocess": [
         {"type": "json", "keep": ["kind", "line", "column"]}
       ]
     },
     "parser": {
-      "cmd": ["{root}/build/splc", "-g", "{grammar}", "-a", "{ast_in}", "{input}"],
+      "cmd": ["{root}/src/parser/run_parser.sh", "{root}", "{grammar}", "{tokens_out}", "{ast_out}", "{input}"],
       "out": "{ast_out}",
       "preprocess": [
         {"type": "json", "keep": ["kind", "line", "column"]}

@@ -25,7 +25,7 @@ if(NOT TARGET nlohmann_json::nlohmann_json)
         GIT_REPOSITORY "https://github.com/nlohmann/json"
         GIT_TAG v3.11.3
     )
-    FetchContent_MakeAvailable(ctre json)
+    FetchContent_MakeAvailable(json)
 endif()
 
 
