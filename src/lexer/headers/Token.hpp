@@ -1,67 +1,101 @@
 #pragma once
 
-#include <iostream>
 #include <string>
+#include <iostream>
+#include <string_view>
 
 #include <nlohmann/json.hpp>
 
+#define TOKEN_LIST(X)                       \
+    /* keywords */                          \
+    X(RETURN) X(VAL)      X(VAR)            \
+    X(IF)     X(ELSE)     X(WHILE)          \
+    X(BREAK)  X(CONTINUE) X(TRUE)           \
+    X(FALSE)  X(DEF)      X(EXTERN)         \
+    X(INT8)   X(INT16)    X(INT32)          \
+    X(INT64)  X(BOOL)     X(STRING)         \
+    X(CAST)   X(STRUCT)                     \
+                                            \
+    /* space, error, string and comments */ \
+    X(SPACE) X(ERROR) X(STR)                \
+    X(SINGLE_COMM) X(MULTI_COMM)            \
+                                            \
+    /* number and ident */                  \
+    X(INT) X(IDENT)                         \
+                                            \
+    /* brackets */                          \
+    X(LPAREN) X(RPAREN)                     \
+    X(LBRACE) X(RBRACE)                     \
+    X(LBRACKET) X(RBRACKET)                 \
+                                            \
+    /* operations */                        \
+    X(AND)    X(OR)   X(LE)                 \
+    X(GE)     X(NE)   X(EQ)                 \
+    X(ASSIGN) X(LT)   X(GT)                 \
+    X(NOT)    X(PLUS) X(MINUS)              \
+    X(MULT)   X(DIV)                        \
+                                            \
+    /* dot, colon, comma and semicolon */   \
+    X(SEMI) X(DOT) X(COLON) X(COMMA)        \
+                                            \
+    /* EOF */                               \
+    X(END)                                  \
 
-enum TokenType {
-    // keywords
-    RETURN, VAL,      VAR,
-    IF,     ELSE,     WHILE,
-    BREAK,  CONTINUE, TRUE,
-    FAlSE,  DEF,      EXTERN,
-    INT8,   INT16,    INT32,
-    INT64,  BOOL,     STRING,
-    CAST,   STRUCT,
-    
-    // space, error, string and comments
-    SPACE,  ERROR,    STR,
-    SINGLE_COMM, MULTI_COMM,
-    
-    // number and ident
-    INT, IDENT,
 
-    // brackets
-    LPAREN,   RPAREN,
-    LBRACE,   RBRACE,
-    LBRACKET, RBRACKET,
-
-    // operations
-    AND,    OR,   LE,
-    GE,     NE,   EQ,
-    ASSIGN, LT,   GT,
-    NOT,    PLUS, MINUS,
-    MULTI,  DIVI,
-
-    // dot, colon, comma and semicolon
-    SEMI, DOT, COLON, COMMA,
-    
-    // EOF
-    END,
+enum class TokenType {
+    #define AS_ENUM(name) name,
+    TOKEN_LIST(AS_ENUM)
+    #undef AS_ENUM
 };
 
 
-class Token {
+constexpr std::string_view tokenTypeToString(TokenType type) {
+    if (type == TokenType::END) {
+        return "EOF";
+    }
 
+    switch (type) {
+        #define AS_STRING(name) case TokenType::name: return #name;
+        TOKEN_LIST(AS_STRING)
+        #undef AS_STRING
+    }
+    return "UNKNOWN";
+}
+
+
+inline TokenType tokenTypeFromString(std::string_view name) {
+    if (name == "EOF") {
+        return TokenType::END;
+    }
+    #define AS_STRING(t) if (name == #t) return TokenType::t;
+    TOKEN_LIST(AS_STRING)
+    #undef AS_STRING
+    return TokenType::ERROR;
+}
+
+
+class Token {
     TokenType ttype_;
     std::string value_;
-    std::string name_;
-    size_t column_;
     size_t line_;
+    size_t column_;
 
 public:
     Token() = default;
-    Token(TokenType t, std::string val, std::string name, size_t l, size_t col): ttype_(t), value_(std::move(val)), 
-                                                                                     name_(name), 
-                                                                                     line_(l), column_(col) {}
-    
+    Token(TokenType t, std::string val, size_t l, size_t col): ttype_(t), value_(std::move(val)), 
+                                                               line_(l), column_(col) {}
+
     TokenType getType() const { return ttype_; }
+
+    std::string_view getName() const { return tokenTypeToString(ttype_); }
+    const std::string& getValue() const { return value_; }
+    size_t getLine() const { return line_; }
+    size_t getColumn() const { return column_; }
 
     nlohmann::ordered_json toJson() const {
         nlohmann::ordered_json res;
-        res["kind"] = name_;
+        
+        res["kind"] = getName();
         res["value"] = value_;
         res["line"] = line_;
         res["column"] = column_;

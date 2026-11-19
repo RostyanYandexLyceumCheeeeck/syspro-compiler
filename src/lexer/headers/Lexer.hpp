@@ -1,17 +1,13 @@
 #pragma once
 
-#include <iostream>
+#include <vector>
+#include <string_view>
 
-#include "TokenParse.hpp"
+#include "Token.hpp"
 
 
 class Lexer {
-    std::vector<std::unique_ptr<ITokenParse>> parsers_;
-
-    void initParsers();
-
 public:
-    Lexer() { initParsers(); }
-    std::vector<Token> parse(const std::string& src) const; 
+    Lexer() = default;
+    std::vector<Token> parse(std::string_view src) const;
 };
-
